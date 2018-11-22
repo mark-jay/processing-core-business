@@ -1,0 +1,148 @@
+// JDL definition for application 'jhipstertest' generated with command 'jhipster export-jdl'
+
+entity Account (account) {
+  status AccountStatus required,
+  balance BigDecimal required,
+  accountNumber String required minlength(10) maxlength(50), // unique
+}
+
+enum AccountStatus {
+  ACTIVATED,
+  // TODO: it can not accept new payments
+  // but can it complete the previous ones? Would be way easier if
+  // it can because it is possible that we complete bank payment and
+  // now can't complete a payment in our system
+  DEACTIVATED
+}
+
+/**
+ * limits are always increased on pending and descreased on completion/declination
+ * what if it created during other payments
+ */
+entity Limit(limit) {
+  currentLimit BigDecimal required,
+  /** this can be maximum storage limit */
+  maxValue BigDecimal required, // check currentLimit < maxValue
+  status LimitStatus required
+}
+
+// with code mapped to a specific strategy
+enum LimitUpdateStrategy {
+  UPDATE_BY_AMOUNT,
+  UPDATE_BY_ONE
+}
+
+enum LimitStatus {
+  DRAFT, CREATED, CREATION_FAILED
+}
+
+entity Payment(payment) {
+  requestId String minlength(36) maxlength(36), // unique
+  paymentNumber Long required, // unique auto increment
+  requestDescription String,
+  requestDate LocalDateTime required,
+  status PaymentStatus required
+}
+
+enum PaymentStatus {
+  // only created but not yet event pending
+  DRAFT,
+
+  // money successfully blocked and a transaction can be finished
+  PENDING,
+
+  // a transaction is in a completion process and is going to be completed soon. It can not and will not be declined.
+  // Some limits may be decreased/increase while others are not
+  MARKED_FOR_COMPLETION,
+
+  // a transaction is completed all money movements finished, receiver can now spend their money
+  COMPLETED,
+
+  // a transaction is in a declination process and is going to be declined soon. It can not and will not be completed.
+  // Some limits may be decreased/increase while others are not
+  MARKED_FOR_DECLINATION,
+
+  // money successfully blocked and a transaction can be finished
+  DECLINED
+}
+
+entity BalanceDelta(balance_delta) {
+  amount BigDecimal required,
+  description String,
+  operationType OperationType required
+}
+
+enum OperationType {
+  INCREASE, // DEBIT
+  DECREASE  // CREDIT
+}
+
+entity LimitBalanceDelta {
+  status LimitBalanceDeltaStatus required
+}
+
+enum LimitBalanceDeltaStatus {
+  DRAFT, APPLIED, REVERTED
+}
+
+entity LimitPlan(limit_plan) {
+  name String required // unique
+}
+
+entity LimitInfo(limit_info) {
+  limitType OperationType required,
+  maxValue BigDecimal required,
+  updateStrategy LimitUpdateStrategy required,
+}
+
+relationship OneToMany {
+  LimitPlan{limits} to LimitInfo{plan required}
+  LimitInfo to Limit{limitInfo required}
+}
+
+relationship ManyToOne {
+  BalanceDelta{account required} to Account
+  BalanceDelta{payment required} to Payment{deltas}
+  Limit{account required} to Account
+  Limit{latestPaymentApplied required} to Payment
+  Account{latestPaymentApplied required} to Payment
+  Account{plan} to LimitPlan
+}
+
+relationship OneToMany {
+  // these two are unique together
+  LimitBalanceDelta{limit required} to Limit
+  LimitBalanceDelta{balanceDelta required} to BalanceDelta
+}
+
+//relationship OneToMany {
+  // AdvertisementInfo{photos} to Photo
+  // WorkingHours{workingHoursIntervals} to WorkingHoursInterval{workingHours required}
+  // AdvertisementInfo{adAttributes} to AdAttributeValue{advertisementInfo required}
+  // Merchant{advertisementInfos} to AdvertisementInfo{owner}
+  // AdvertisementInfo{payments} to Payment{advertisementInfo required}
+  // Payment{services} to ServicePayment{payment required}
+  // PlanTariff{prices} to PayableServicePrice{planTariff required}
+  // Merchant{branch} to Branch{merchant required}
+  // AdAttribute{adAttributeEnum} to AdAttributeEnum{AdAttribute required}
+// }
+
+
+
+/**
+ * A generic form of advertisement.
+ */
+
+
+// entity Sample (account) {
+//  discountedAmount BigDecimal required,
+//  originalAmount BigDecimal required,
+//  title String required minlength(3) maxlength(150),
+//  createdDate ZonedDateTime,
+//  expirationDate ZonedDateTime required,
+//  description String required minlength(10) maxlength(500),
+//  viewsCount BigDecimal required min(0),
+//  maxAvailableViewsCount BigDecimal required min(0),
+//  priority Boolean required,
+//  color Boolean required
+//}
